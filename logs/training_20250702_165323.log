@@ -1,0 +1,25 @@
+2025-07-02 16:53:23,446 [INFO] Logging started. Log file: logs\training_20250702_165323.log
+2025-07-02 16:54:00,318 [INFO] Epoch 1 action distribution: {9: 81, 5: 609, 1: 90, 6: 587, 2: 82, 4: 89, 10: 606, 7: 614, 0: 588, 8: 590, 11: 86, 3: 74}
+2025-07-02 16:54:00,319 [INFO] Epoch 1: mean_reward=-0.0013, total_reward=-5.45, net_profit=-0.9970, sharpe=-0.0974, max_dd=0.9975
+2025-07-02 16:54:35,534 [INFO] Epoch 2 action distribution: {11: 97, 9: 100, 5: 606, 10: 568, 7: 599, 0: 579, 4: 84, 6: 601, 8: 598, 1: 97, 3: 95, 2: 72}
+2025-07-02 16:54:35,534 [INFO] Epoch 2: mean_reward=-0.0014, total_reward=-5.84, net_profit=-0.9980, sharpe=-0.1033, max_dd=0.9985
+2025-07-02 16:55:10,519 [INFO] Epoch 3 action distribution: {6: 592, 5: 607, 11: 89, 8: 577, 10: 596, 0: 636, 3: 87, 7: 551, 1: 69, 4: 92, 9: 104, 2: 96}
+2025-07-02 16:55:10,519 [INFO] Epoch 3: mean_reward=-0.0012, total_reward=-5.05, net_profit=-0.9957, sharpe=-0.0885, max_dd=0.9969
+2025-07-02 16:55:44,550 [INFO] Epoch 4 action distribution: {9: 103, 10: 623, 11: 103, 6: 577, 0: 587, 5: 590, 7: 586, 8: 597, 4: 92, 2: 65, 3: 76, 1: 97}
+2025-07-02 16:55:44,550 [INFO] Epoch 4: mean_reward=-0.0016, total_reward=-6.35, net_profit=-0.9988, sharpe=-0.1091, max_dd=0.9990
+2025-07-02 16:56:18,133 [INFO] Epoch 5 action distribution: {6: 630, 11: 95, 9: 98, 7: 565, 10: 558, 0: 625, 5: 571, 8: 599, 3: 80, 4: 85, 1: 108, 2: 82}
+2025-07-02 16:56:18,133 [INFO] Epoch 5: mean_reward=-0.0014, total_reward=-5.73, net_profit=-0.9977, sharpe=-0.1053, max_dd=0.9980
+2025-07-02 16:56:53,989 [INFO] Epoch 6 action distribution: {11: 85, 9: 89, 10: 602, 6: 606, 5: 578, 0: 605, 8: 572, 7: 621, 1: 102, 3: 70, 2: 88, 4: 78}
+2025-07-02 16:56:53,989 [INFO] Epoch 6: mean_reward=-0.0014, total_reward=-5.67, net_profit=-0.9977, sharpe=-0.0999, max_dd=0.9979
+2025-07-02 16:57:29,652 [INFO] Epoch 7 action distribution: {5: 589, 1: 100, 2: 78, 9: 110, 7: 625, 0: 603, 6: 586, 8: 550, 10: 595, 11: 80, 4: 86, 3: 94}
+2025-07-02 16:57:29,653 [INFO] Epoch 7: mean_reward=-0.0015, total_reward=-6.09, net_profit=-0.9985, sharpe=-0.1082, max_dd=0.9986
+2025-07-02 16:58:05,651 [INFO] Epoch 8 action distribution: {4: 84, 9: 106, 3: 77, 5: 578, 1: 110, 8: 576, 7: 593, 11: 101, 10: 626, 0: 591, 2: 87, 6: 567}
+2025-07-02 16:58:05,651 [INFO] Epoch 8: mean_reward=-0.0013, total_reward=-5.40, net_profit=-0.9969, sharpe=-0.1003, max_dd=0.9976
+2025-07-02 16:58:40,443 [INFO] Epoch 9 action distribution: {10: 664, 11: 89, 9: 100, 8: 560, 0: 550, 5: 579, 6: 612, 7: 604, 2: 79, 3: 87, 1: 100, 4: 72}
+2025-07-02 16:58:40,443 [INFO] Epoch 9: mean_reward=-0.0014, total_reward=-5.57, net_profit=-0.9974, sharpe=-0.0979, max_dd=0.9978
+2025-07-02 16:59:15,471 [INFO] Epoch 10 action distribution: {6: 609, 5: 590, 9: 105, 11: 83, 8: 602, 10: 595, 0: 574, 7: 600, 1: 102, 2: 80, 4: 76, 3: 80}
+2025-07-02 16:59:15,472 [INFO] Epoch 10: mean_reward=-0.0015, total_reward=-6.12, net_profit=-0.9985, sharpe=-0.1147, max_dd=0.9987
+2025-07-02 16:59:50,604 [INFO] Epoch 11 action distribution: {7: 588, 5: 607, 6: 593, 9: 107, 11: 100, 0: 595, 8: 578, 3: 79, 1: 85, 2: 76, 10: 606, 4: 82}
+2025-07-02 16:59:50,604 [INFO] Epoch 11: mean_reward=-0.0016, total_reward=-6.41, net_profit=-0.9989, sharpe=-0.1178, max_dd=0.9990
+2025-07-02 17:00:26,172 [INFO] Epoch 12 action distribution: {1: 105, 9: 77, 11: 103, 10: 579, 7: 611, 0: 593, 3: 91, 2: 83, 6: 592, 5: 593, 8: 585, 4: 84}
+2025-07-02 17:00:26,172 [INFO] Epoch 12: mean_reward=-0.0016, total_reward=-6.70, net_profit=-0.9991, sharpe=-0.1238, max_dd=0.9992

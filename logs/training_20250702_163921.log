@@ -1,0 +1,9 @@
+2025-07-02 16:39:21,052 [INFO] Logging started. Log file: logs\training_20250702_163921.log
+2025-07-02 16:40:00,478 [INFO] Epoch 1 action distribution: {6: 112, 10: 3984}
+2025-07-02 16:40:00,478 [INFO] Epoch 1: mean_reward=-0.0014, total_reward=-5.76, net_profit=-0.9982, sharpe=-0.0840, max_dd=0.9986
+2025-07-02 16:40:37,100 [INFO] Epoch 2 action distribution: {6: 112, 10: 3984}
+2025-07-02 16:40:37,100 [INFO] Epoch 2: mean_reward=-0.0014, total_reward=-5.76, net_profit=-0.9982, sharpe=-0.0840, max_dd=0.9986
+2025-07-02 16:41:14,439 [INFO] Epoch 3 action distribution: {6: 112, 10: 3984}
+2025-07-02 16:41:14,439 [INFO] Epoch 3: mean_reward=-0.0014, total_reward=-5.76, net_profit=-0.9982, sharpe=-0.0840, max_dd=0.9986
+2025-07-02 16:41:51,002 [INFO] Epoch 4 action distribution: {6: 112, 10: 3984}
+2025-07-02 16:41:51,002 [INFO] Epoch 4: mean_reward=-0.0014, total_reward=-5.76, net_profit=-0.9982, sharpe=-0.0840, max_dd=0.9986

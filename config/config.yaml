@@ -1,0 +1,58 @@
+# Veri Ayarları
+data:
+  coin_list: ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "SHIBUSDT", "AVAXUSDT", "TRXUSDT"]
+  interval: "1h"  # Binance klines: 1m, 5m, 15m, 1h, 4h, 1d
+  lookback: 200  # Her adımda en az 200 geçmiş bar tutulacak
+  train_range: ["2021-06-01 00:00:00", "2023-12-31 00:00:00"]
+  val_range:   ["2024-01-01 00:00:00", "2024-12-31 00:00:00"]
+  test_range:  ["2025-01-01 00:00:00", "2025-06-30 00:00:00"]
+
+  use_binance_api: false
+  offline_data_path: "data/processed/coin_data.parquet"
+
+# Ortam (Environment)
+environment:
+  initial_balance: 10000
+  commission: 0.001  # %0.1 işlem ücreti
+  use_one_hot_position: true
+
+# PPO Ajan Parametreleri
+ppo:
+  gamma: 0.99
+  lam: 0.95
+  learning_rate: 0.0003
+  clip_epsilon: 0.2
+  entropy_coeff: 0.1
+  value_coeff: 0.5
+  epochs: 10
+  minibatch_size: 64
+  rollout_steps: 4096
+  max_grad_norm: 0.5
+
+# Eğitim
+training:
+  total_epochs: 500
+  validate_every: 10
+  save_best_model: true
+  model_save_path: "outputs/models/best_model.pth"
+  log_path: "outputs/logs/train_logs.csv"
+
+# Test ve Değerlendirme
+test:
+  use_deterministic_policy: true
+  backtest_log_path: "outputs/results/trades_log.csv"
+  equity_curve_path: "outputs/results/equity_curve.csv"
+
+# Geri Test
+backtest:
+  plot_equity_curve: true
+  save_report: true
+
+# Donanım
+device: "cpu"  # "cpu" veya "cuda"
+
+reward:
+  weights:
+    profit: 1.0
+    sharpe: 0.5
+    drawdown: 1.0
