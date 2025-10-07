@@ -1,0 +1,47 @@
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-wheel-metadata/
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs and outputs
+logs/
+*.log
+# Outputs (keep directory empty of tracked files)
+outputs/**
+!outputs/
+
+# Jupyter and editor settings
+.ipynb_checkpoints/
+.vscode/
+.idea/
+
+# Local environment files
+.env
+.env.*
+*.env
+
+# Data artifacts (large / reproducible)
+data/downloaded/
+data/processed/

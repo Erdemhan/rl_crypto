@@ -1,0 +1,142 @@
+# config.yaml
+meta:
+  run_all_profiles: true            # Hepsini tek komutla koştur. true → tüm profiller paralel başlar.
+  profiles_order: ["aggressive", "balanced", "defensive"]  # Profil listesi. Paralelde sıranın önemi yok.
+  profiles_dirname: "outputs"       # Çıktı kök klasörü. Değiştirirsen tüm kayıtlar buraya gider.
+
+globals:                             # Varsayılan ayarlar (profillerin yazmadığı alanları buradan devralır)
+  data:
+    coin_list: ["BTCUSDT"]          # Kullanılacak semboller. ↑ fazla coin → genelci model, daha zor öğrenme.
+    interval: "1h"                  # Zaman dilimi (1m/5m/15m/1h/4h/1d). ↓ (daha kısa) → hızlı tepki, daha gürültü.
+    lookback: 200                   # Her adımda tutulan geçmiş bar sayısı. ↑ → daha fazla bağlam, daha yavaş/çok bellek.
+    train_range: ["2021-06-01 00:00:00", "2024-12-31 00:00:00"]  # Eğitim aralığı. Uzatmak geneli öğretir ama süre ↑
+    val_range:   ["2024-01-01 00:00:00", "2024-06-30 00:00:00"]  # Doğrulama aralığı. Erken durdurma/izleme için.
+    test_range:  ["2024-06-30 00:01:00", "2025-06-30 00:00:00"]  # Test aralığı. Değiştirme → sonuçlar kıyaslanamaz olur.
+    use_binance_api: false          # true → canlı/indirme; false → offline dosyadan oku.
+    offline_data_path: "data/processed/coin_data.parquet"  # Offline veri yolu. Dosya yoksa hata alırsın.
+
+  environment:
+    initial_balance: 10000          # Başlangıç sermayesi. ↑ → daha büyük pozisyonlar; metrik oranları etkilenmez.
+    commission: 0.001               # İşlem ücreti (0.001 = %0.1). ↑ → net kâr düşer; gerçekçilik artar.
+    use_one_hot_position: true      # Pozisyonu one-hot olarak encode et. true → ajana daha net durum bilgisi.
+
+  ppo:
+    gamma: 0.6                    # İskonto oranı. ↑ → uzun vade odak; ↓ → kısa vade hassas.
+    lam: 0.95                       # GAE λ. ↑ → varyans ↓, bias ↑; ↓ → varyans ↑, daha reaktif.
+    learning_rate: 0.0004           # Öğrenme hızı. ↑ → hızlı ama dengesiz; ↓ → yavaş ama stabil.
+    clip_epsilon: 0.5               # PPO clip oranı. ↑ → agresif güncelleme; ↓ → stabil ama yavaş öğrenme.
+    entropy_coeff: 0.7              # Entropi katsayısı. ↑ → keşif ↑; ↓ → sömürü ↑ (erken kapanma riski).
+    entropy_min_coeff: 0.05         # Entropi katsayısının düşeceği taban değer. Boş bırakılırsa sabit kalır.
+    entropy_decay_epochs: 0.8       # Toplam epoch'un yüzde kaçı boyunca entropi düşsün? >1 verilirse direkt epoch sayısı.
+    value_coeff: 0.5               # Value kaybı ağırlığı. ↑ → değer tahmini önemli; ↓ → politika baskın.
+    epochs: 15                      # Rollout başına update sayısı. ↑ → veri daha çok kullanılır, overfit riski.
+    minibatch_size: 128              # Minibatch boyutu. ↑ → daha stabil gradient, daha yavaş iterasyon.
+    rollout_steps: 4096             # Güncelleme öncesi adım sayısı. ↑ → istikrar ↑, bellek/süre ↑.
+    max_grad_norm: 100              # Grad clip eşiği. ↓ → patlamayı önler ama öğrenmeyi kısıtlayabilir.
+    
+    #gamma: 0.90                     
+    # İskonto oranı (discount factor).
+    # Gelecekteki ödülleri ne kadar bugüne değerli kabul edeceğini belirler.
+    # 1.0’a yakın → ajan uzun vadeli getirileri daha fazla dikkate alır.
+    # Düşük (ör. 0.90) → ajan kısa vadeli kazançlara daha duyarlı olur, uzun vadeli stratejiler zayıflar.
+
+    #lam: 0.95                       
+    # GAE (Generalized Advantage Estimation) için λ katsayısı.
+    # Temporal-Difference (TD) hatasının ne kadar ileri taşınacağını kontrol eder.
+    # 1.0’a yakın → bias düşük ama varyans yüksek → avantaj hesaplamaları “gürültülü”.
+    # Daha düşük → bias artar ama varyans azalır → daha stabil, fakat çevikliğini kaybedebilir.
+
+    #learning_rate: 0.0003           
+    # Öğrenme hızı (step size).
+    # Her güncellemede ağın ağırlıkları ne kadar değişecek?
+    # Yüksek → daha hızlı öğrenir ama dengesizleşip NaN’lere patlayabilir.
+    # Düşük → daha kararlı ama çok yavaş öğrenir, lokal minimumda takılma riski artar.
+
+    #clip_epsilon: 0.2               
+    # PPO’nun clipping parametresi.
+    # Politika güncellemelerinde oran (π_new / π_old) bu sınırın dışına çıkarsa kayıp fonksiyonu cezalandırılır.
+    # Yüksek (örn. 0.3) → daha büyük politika adımlarına izin verir → hızlı ama dengesiz.
+    # Düşük (örn. 0.1) → küçük adımlarla çok stabil öğrenir ama daha yavaş.
+
+    #entropy_coeff: 0.4              
+    # Entropi katsayısı (keşif vs sömürü dengesini ayarlar).
+    # Yüksek → ajan daha çok rastgelelik katar → daha çok keşif yapar ama optimal politikaya yakınsamayı geciktirebilir.
+    # Düşük → ajan daha deterministik davranır → keşif azalır, sömürü artar (erken “kilitlenme” riski).
+
+    #value_coeff: 0.3                
+    # Value loss katsayısı (kritik ağın kaybı ile politika kaybı arasındaki denge).
+    # Yüksek → değer fonksiyonunun (V(s)) doğru öğrenilmesine öncelik verir.
+    # Düşük → politika (actor) güncellemeleri daha baskın olur, value ağının doğruluğu ikinci planda kalır.
+
+    #epochs: 10                      
+    # Her rollout’tan sonra policy/value ağlarını güncellemek için yapılan geçiş sayısı.
+    # Yüksek → veriler daha çok yeniden kullanılır, daha verimli ama overfitting riski var.
+    # Düşük → her minibatch az kere görülür, daha hızlı ama verim düşük.
+
+    #minibatch_size: 64              
+    # PPO güncellemeleri için minibatch boyutu.
+    # Yüksek → gradient tahminleri daha stabil, ama her iterasyon daha yavaş.
+    # Düşük → güncellemeler hızlı ama gürültülü, kararsız öğrenmeye yol açabilir.
+
+    #rollout_steps: 4096             
+    # Ajanın environment’ta topladığı adım sayısı (trajectory uzunluğu).
+    # Yüksek → daha çok deneyimle daha istikrarlı güncellemeler yapılır ama bellek/süre yükü artar.
+    # Düşük → daha sık güncelleme yapılır, öğrenme hızlanır ama avantaj tahmini daha gürültülü olur.
+
+    #max_grad_norm: 0.5              
+    # Gradient clipping sınırı (patlayan gradientleri önlemek için).
+    # Eğer bir batch’te gradient normu bu eşiği aşarsa ölçeklenir.
+    # Düşük değer → öğrenme daha kontrollü, patlama riski düşük ama güncellemeler küçük kalabilir.
+    # Yüksek değer → daha agresif güncellemeler, hızlı öğrenme ama patlama riski artar.
+
+
+  training:
+    total_epochs: 200              # Toplam epoch. ↑ → yakınsama şansı ↑, süre ↑.
+    validate_every: 50             # Kaç epoch’ta bir doğrulama. ↓ → daha sık kontrol, maliyet ↑.
+    best_metric: "net_profit"      # En iyi model seçiminde izlenecek metrik (ör. "net_profit", "sharpe", "-max_drawdown").
+    save_best_model: true           # En iyi modeli kaydet. false → sadece son ağırlıklar kalır.
+    model_save_path: "outputs/models/best_model.pth"  # Model kayıt yolu (profil çalışınca run klasörüne taşınır).
+    log_path: "outputs/logs/train_logs.csv"           # Eğitim logları (profil çalışınca run klasörüne taşınır).
+    # Validation sonuçları her run için otomatik olarak outputs/<run>/validation/ klasörüne yazılır.
+
+  test:
+    use_deterministic_policy: true # Testte örnekleme kapatılsın mı? true → her adım en olası aksiyon (tekrar edilebilir).
+    backtest_log_path: "outputs/results/trades_log.csv"   # İşlem logu (profil/run altında override edilir).
+    equity_curve_path: "outputs/results/equity_curve.csv" # Bakiye eğrisi (profil/run altında override edilir).
+
+  backtest:
+    plot_equity_curve: true         # Grafik çiz. false → sadece CSV kayıt.
+    save_report: true               # Rapor/özet dosyası kaydet (uygulamana bağlı).
+
+  device: "cpu"                     # "cpu" / "cuda". CUDA varsa hızlanır; yoksabozmaz.
+  reward:
+    weights:
+      profit: 1.0                   # Normalize edilmiş kâr bileşeni ağırlığı.
+      drawdown: 0.3                 # Normalize drawdown cezasının ağırlığı.
+      invalid: 10.0                  # Geçersiz/tekrarlı işlemler için ceza ağırlığı.
+    step:
+      return_scale: 50.0            # tanh(return_scale * getiri) → [-1,1]
+      drawdown_scale: 5.0           # drawdown * scale → 0..1 bandı
+      eps: 1e-08                    # Bölme işlemleri için küçük sayı
+  seed: 42                          # Rastgelelik tohumu. Aynı koşu için sabit kalsın; değiştir → farklı senaryo.
+
+profiles:                            # Profiller sadece farkları yazar; geri kalanı globals’tan devralır
+  aggressive:
+    reward:
+      weights:
+        profit: 0.8                 # Kâr baskın.
+        drawdown: 0.2              # Drawdown cezaları düşük.
+        
+  balanced:
+    reward:
+      weights:
+        profit: 0.5                # Dengeli kâr ağırlığı.
+        drawdown: 0.5               # Orta düzey drawdown cezası.
+
+
+  defensive:
+    reward:
+      weights:
+        profit: 0.4                 # Kâr daha düşük ağırlık.
+        drawdown: 0.7               # Drawdown cezası yüksek.
+

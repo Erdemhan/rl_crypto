@@ -1,30 +1,29 @@
-# utils/config_loader.py
+"""Eski Config arabirimini yeni loader'a yonlendiren sarici."""
 
-import yaml
-from pathlib import Path
+from __future__ import annotations
+
+from typing import Any, Dict, Optional
+
+from crypto_rl.config.loader import ConfigLoader
+
 
 class Config:
-    def __init__(self, config_path="config/config.yaml"):
-        self.config_path = Path(config_path)
-        self._config = self._load_config()
+    """Geri uyumluluk icin ince sarici."""
 
-    def _load_config(self):
-        with open(self.config_path, "r") as f:
-            return yaml.safe_load(f)
+    def __init__(self, config_path: Optional[str] = None, profile: Optional[str] = None):
+        self._loader = ConfigLoader(config_path=config_path)
+        self._selected_profile = profile
 
-    def get(self, key_path, default=None):
-        """
-        İç içe geçmiş anahtarlara nokta ile erişmek için:
-        config.get("ppo.learning_rate") → 0.0003
-        """
-        keys = key_path.split(".")
-        val = self._config
-        try:
-            for k in keys:
-                val = val[k]
-            return val
-        except (KeyError, TypeError):
-            return default
+    def get(self, key_path: str, default: Any = None, profile: Optional[str] = None) -> Any:
+        target_profile = profile if profile is not None else self._selected_profile
+        return self._loader.get(key_path, default=default, profile=target_profile)
 
-    def all(self):
-        return self._config
+    def all(self, profile: Optional[str] = None) -> Dict[str, Any]:
+        target_profile = profile if profile is not None else self._selected_profile
+        return self._loader.resolved(target_profile)
+
+    def profiles(self):
+        return list(self._loader.profiles())
+
+    def meta(self) -> Dict[str, Any]:
+        return self._loader.meta()

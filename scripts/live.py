@@ -1,11 +1,27 @@
 # scripts/live.py
 
 import time
-import torch
+import sys
+from pathlib import Path
+
 import numpy as np
+import torch
+
 from utils.config_loader import Config
-from agents.ppo_agent import PPOAgent
 from evaluation.logger import TradeLogger
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.append(str(SRC_DIR))
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
+
+from crypto_rl.agents.ppo import PPOAgent  # noqa: E402
+from crypto_rl.env.trading import CryptoTradingEnv  # noqa: E402
+
+from data.data_loader import load_price_data  # noqa: E402
+from data.split_utils import split_data  # noqa: E402
 
 # Gerçek zamanlı veri simülasyonu – ileri geliştirmede Binance API ile değiştirilebilir
 def get_live_state(env, config):
@@ -17,10 +33,6 @@ def main():
     device = torch.device(config.get("device", "cpu"))
     logger = TradeLogger(config)
 
-    from envs.trading_env import CryptoTradingEnv
-    from data.data_loader import load_price_data
-    from data.split_utils import split_data
-
     # Dummy veri ile başla (gerçek versiyonda canlı veri buraya gelecek)
     df = load_price_data(config)
     _, _, live_df = split_data(df, config)
@@ -30,7 +42,12 @@ def main():
     action_dim = env.action_space.n
 
     agent = PPOAgent(obs_dim, action_dim, config, device)
-    agent.actor.load_state_dict(torch.load(config.get("training.model_save_path"), map_location=device))
+    model_path = config.get("training.model_save_path")
+    try:
+        actor_state = torch.load(model_path, map_location=device, weights_only=True)
+    except TypeError:
+        actor_state = torch.load(model_path, map_location=device)
+    agent.actor.load_state_dict(actor_state)
 
     state = env.reset()
     print("🚀 Starting paper trading loop...")

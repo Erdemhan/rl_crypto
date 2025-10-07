@@ -1,4 +1,3 @@
-
 # models/actor.py
 
 import torch
@@ -12,10 +11,10 @@ class Actor(nn.Module):
             nn.ReLU(),
             nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Linear(128, action_dim),
-            nn.Tanh()  # ⬅️ logits artık -1 ile 1 arasında olacak
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, action_dim)     # logits, no Tanh here!
         )
-
 
     def forward(self, x):
         return self.model(x)
