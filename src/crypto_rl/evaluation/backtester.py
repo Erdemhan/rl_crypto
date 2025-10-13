@@ -16,7 +16,6 @@ class BacktestResult:
 
     equity_curve: List[float] = field(default_factory=list)
     trades: List[dict] = field(default_factory=list)
-    equity_curve_path: Optional[str] = None
     trades_path: Optional[str] = None
 
 
@@ -53,23 +52,12 @@ class Backtester:
 
     def _persist(self, result: BacktestResult):
         """CSV kayitlarini olusturur."""
-        curve_path = self.config.get("test.equity_curve_path")
         trades_path = self.config.get("test.backtest_log_path")
-
-        if curve_path:
-            os.makedirs(os.path.dirname(curve_path), exist_ok=True)
-            curve_df = pd.DataFrame({
-                "time": range(len(result.equity_curve)),
-                "portfolio_value": result.equity_curve,
-            })
-            curve_df.to_csv(curve_path, index=False)
-            result.equity_curve_path = curve_path
 
         if trades_path and result.trades:
             os.makedirs(os.path.dirname(trades_path), exist_ok=True)
             trades_df = pd.DataFrame(result.trades)
+            if "step" not in trades_df.columns:
+                trades_df.insert(0, "step", range(len(trades_df)))
             trades_df.to_csv(trades_path, index=False)
             result.trades_path = trades_path
-
-            actions_path = Path(trades_path).with_name("actions.csv")
-            trades_df.to_csv(actions_path, index=False)

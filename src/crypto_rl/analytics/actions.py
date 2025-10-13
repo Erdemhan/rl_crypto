@@ -31,7 +31,7 @@ def dump_actions_with_flags(agent, config, data, results_dir: str, deterministic
         action, _, _ = agent.select_action(obs, deterministic=deterministic)
         invalid_sell = action == 1 and previous_position == 0
         redundant_buy = action >= 2 and previous_position == (action - 2 + 1)
-        obs, _, done, _ = env.step(action)
+        obs, _, done, info = env.step(action)
         current_position = env.position_mgr.position
 
         rows.append(
@@ -42,19 +42,23 @@ def dump_actions_with_flags(agent, config, data, results_dir: str, deterministic
                 "cash_only": int(current_position == 0),
                 "invalid_sell": int(invalid_sell),
                 "redundant_buy": int(redundant_buy),
+                "hold_steps": int(info.get("hold_steps", 0)),
+                "hold_penalty": float(info.get("hold_penalty", 0.0)),
+                "portfolio_value": float(info.get("portfolio_value", 0.0)),
+                "reward_total": float(info.get("reward_total", 0.0)),
+                "reward_profit_term": float(info.get("reward_profit_term", 0.0)),
+                "reward_drawdown_penalty": float(info.get("reward_drawdown_penalty", 0.0)),
+                "reward_hold_penalty": float(info.get("reward_hold_penalty", info.get("hold_penalty", 0.0))),
+                "reward_invalid_penalty": float(info.get("reward_invalid_penalty", 0.0)),
+                "reward_return_norm": float(info.get("reward_return_norm", 0.0)),
+                "reward_drawdown_norm": float(info.get("reward_drawdown_norm", 0.0)),
+                "invalid_events": float(info.get("invalid_events", 0.0)),
             }
         )
         previous_position = current_position
         step += 1
 
-    equity_path = os.path.join(results_dir, "equity_curve.csv")
-    if os.path.exists(equity_path):
-        equity_df = pd.read_csv(equity_path)
-        limit = min(len(rows), len(equity_df))
-        for idx in range(limit):
-            rows[idx]["portfolio_value"] = float(equity_df.loc[idx, "portfolio_value"])
-
-    out_csv = os.path.join(results_dir, "actions.csv")
+    out_csv = os.path.join(results_dir, "trades_log.csv")
     if rows:
         with open(out_csv, "w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))

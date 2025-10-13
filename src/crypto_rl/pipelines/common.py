@@ -79,8 +79,8 @@ def prepare_run_paths(meta: Dict[str, Any], profile: Optional[str], run_id: Opti
     )
 
 
-def setup_logging(log_dir: Path, profile: Optional[str], prefix: str) -> Path:
-    """Dosya ve konsol loglamasını hazırlar."""
+def setup_logging(log_dir: Path, profile: Optional[str], prefix: str, *, enable_console: bool = True) -> Path:
+    """Dosya ve opsiyonel konsol loglamasını hazırlar."""
     log_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{profile}_{prefix}_{timestamp}.log" if profile else f"{prefix}_{timestamp}.log"
@@ -89,13 +89,14 @@ def setup_logging(log_dir: Path, profile: Optional[str], prefix: str) -> Path:
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
 
+    handlers = [logging.FileHandler(log_path, encoding="utf-8")]
+    if enable_console:
+        handlers.append(logging.StreamHandler())
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(log_path, encoding="utf-8"),
-            logging.StreamHandler(),
-        ],
+        handlers=handlers,
     )
     logging.getLogger().info("%s log dosyası: %s", prefix.capitalize(), log_path)
     return log_path

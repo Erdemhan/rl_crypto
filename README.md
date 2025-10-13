@@ -29,7 +29,7 @@ pip install -r requirements.txt
 * `evaluation/` - legacy wrapper for backtesting utilities
 * `scripts/` - CLI entry points (`train.py`, `test.py`, and `live.py`)
 * `config/` - training and environment parameters in `config.yaml`
-* `outputs/` - saved models, logs, equity curves
+* `outputs/` - saved models, logs, trades histories
 
 ## 🧭 How the System Works
 
@@ -40,11 +40,23 @@ Yeni başlayanlara yönelik olarak, aşağıdaki adımlar sistemin uçtan uca na
 2. **Ajanı eğit (`python scripts/train.py --run-id 20251007`)**  
    CLI yapılandırmayı çözümler, `outputs/<run-id>_<profil>/` altında izole bir klasör oluşturur, rastgelelik kaynaklarını sabitleyip veriyi eğitim/doğrulama/test aralıklarına böler. PPO trainer her epoch `CryptoTradingEnv` üzerinden rollout toplar, GAE (lambda) ile avantajları hesaplar, aktör/kritik ağlarını günceller ve loglara yazar. `training.validate_every` > 0 olduğunda doğrulama setinde test yapılır; `training.best_metric` (varsayılan `net_profit`) iyileştiğinde o andaki ağırlıklar “en iyi” olarak saklanır. Eğitim sonunda bu snapshot `outputs/<run>/models/best_model.pth` dosyasına ve zaman damgalı yedeğe kaydedilir; loglar ve doğrulama CSV’leri aynı run klasörünün `logs/` ve `validation/` altındadır.
 3. **Modele geri test yap (`python scripts/test.py --run-id 20251007`)**  
-   Backtest pipeline’ı profillerin `best_model.pth` dosyalarını yükler, test aralığında deterministik (isterseniz rastgele) bir simülasyon koşturur ve çıktıları `outputs/<run>/results/` altına bırakır: `equity_curve.csv` portföy değerini, `trades_log.csv` gerçekleşen işlemleri, `actions.csv` ise her adımda alınan HOLD/BUY/SELL kararlarını ve geçersiz/tekrarlı aksiyon bayraklarını içerir.
+   Backtest pipeline’ı profillerin `best_model.pth` dosyalarını yükler, test aralığında deterministik (isterseniz rastgele) bir simülasyon koşturur ve çıktıları `outputs/<run>/results/` altına bırakır: `trades_log.csv` her adımda alınan HOLD/BUY/SELL kararlarını, geçersiz/tekrarlı aksiyon bayraklarını ve portföy değerini içerir.
 4. **Canlı veya kâğıt üzerinde dene (`python scripts/live.py`)**  
    Bu betik aynı `best_model.pth` dosyasını yükler, gözlem vektörlerini (şimdilik offline veriden simüle ediliyor) gerçek zamanlı besler ve portföy değerini loglar. Gerçek borsa entegrasyonu için yalnızca veri akışını değiştirmek gerekir.
 
 Her run dizini böylece kendi içinde tam döngüyü barındırır: ham veri `data/` dizininde kalır, deneylerin log/model çıktıları `outputs/<run-id>_<profil>/` altında toplanır ve en güncel şampiyon model her zaman `models/best_model.pth` dosyasında bulunur.
+
+## ⚙️ Hyperparameter Search
+
+Genetik algoritma (GA) ile PPO hiperparametrelerini ve ödül ağırlıklarını optimize etmek için yerleşik bir arama komutu bulunuyor.
+
+```bash
+python scripts/ga_optimize.py --profile balanced --generations 3 --population 8
+```
+
+* Varsayılan GA ayarları `configs/config.yaml` içindeki `optimization.ga` bloğunda tanımlıdır; CLI argümanları (örn. `--max-workers`, `--vol-weight`) ile geçersiz kılabilirsiniz.
+* Her birey kısa bir eğitim + test diliminde backtest ile değerlendirilir. Fitness formülü, toplam büyüme (`final / başlangıç`) ile volatilite cezasının (`growth - w * volatility`) birleşimidir.
+* En iyi bireyin parametreleri ve çalışma özeti `outputs/ga_<timestamp>_summary/best_candidate.json` dosyasında saklanır. Bu değerlerle tam eğitim başlatabilirsiniz.
 
 ## ?? Training
 
@@ -66,13 +78,12 @@ python scripts/test.py
 * Outputs:
 
   * `outputs/results/trades_log.csv`
-  * `outputs/results/equity_curve.csv`
 
 ## ?? Performance Evaluation
 
 ```python
 from evaluation.metrics import print_metrics
-print_metrics("outputs/results/equity_curve.csv")
+print_metrics("outputs/results/trades_log.csv")
 ```
 
 Outputs:
