@@ -146,41 +146,47 @@ def _evaluate_worker(payload: Dict[str, Any]) -> GAResult:
                     f"Trades log '{trades_path}' must contain at least two rows for evaluation."
                 )
 
-            initial_value = float(equity[0])
-            final_value = float(equity[-1])
-            growth = final_value / initial_value
+            rewards = trades_df.get("reward")
+            rewards_arr = rewards.astype(float).to_numpy() if rewards is not None else np.diff(equity)
+            total_reward = float(equity[-1])
+            avg_reward = float(np.mean(rewards_arr)) if rewards_arr.size else 0.0
+            volatility = float(np.std(rewards_arr)) if rewards_arr.size else 0.0
+            fitness = avg_reward - volatility_weight * volatility
 
-            returns = np.diff(equity) / equity[:-1]
-            volatility = float(np.std(returns)) if returns.size else 0.0
-            fitness = growth - volatility_weight * volatility
+            accuracy_series = trades_df.get("correct")
+            if accuracy_series is not None and len(accuracy_series) > 0:
+                accuracy = float(pd.to_numeric(accuracy_series, errors="coerce").fillna(0).mean())
+            else:
+                accuracy = float("nan")
 
             fitness_values.append(fitness)
-            growth_values.append(growth)
+            growth_values.append(avg_reward)
             volatility_values.append(volatility)
             test_metrics[test_name] = {
                 "trades_path": str(trades_path),
                 "range": test_info.get("range"),
-                "growth": growth,
+                "avg_reward": avg_reward,
                 "volatility": volatility,
                 "fitness": fitness,
-                "final_value": final_value,
+                "total_reward": total_reward,
+                "accuracy": accuracy,
             }
 
         avg_fitness = float(np.mean(fitness_values))
-        avg_growth = float(np.mean(growth_values))
+        avg_reward = float(np.mean(growth_values))
         avg_volatility = float(np.mean(volatility_values))
 
         meta = {
             "training": training_result,
             "tests": test_metrics,
-            "average_growth": avg_growth,
+            "average_reward": avg_reward,
             "average_volatility": avg_volatility,
         }
 
         return GAResult(
             individual=individual,
             fitness=avg_fitness,
-            growth=avg_growth,
+            growth=avg_reward,
             volatility=avg_volatility,
             run_id=run_id,
             meta=meta,

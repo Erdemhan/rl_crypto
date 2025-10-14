@@ -24,31 +24,23 @@ globals:                            # Profillerin devraldığı varsayılan ayar
     commission: 0.001               # İşlem başına komisyon (0.001 = %0.1).
     use_one_hot_position: true      # Pozisyonu tek değer yerine one-hot vektörle ifade et.
 
-  reward:                           # Ödül fonksiyonu ayarları.
-    weights:
-      profit: 0.7                   # Normalleştirilmiş adım getirisinin katsayısı.
-      drawdown: 0.3                 # Drawdown cezasının katsayısı (yüksek → daha agresif ceza).
-      invalid: 10.0                 # Geçersiz satış ve tekrarlı alım aksiyonları için ceza katsayısı.
-      hold: 0.0                     # Pozisyonu fazla tutma cezası (0 ise devre dışı).
-    step:
-      return_scale: 50.0            # Getiriyi tanh içine sokmadan önce kullanılan çarpan.
-      drawdown_scale: 5.0           # Drawdown değerini 0..1 bandına sıkıştıran ölçek.
-      hold_threshold: 16            # Pozisyonda iken ceza başlamadan izin verilen ardışık HOLD sayısı.
-      hold_decay: 0.6               # HOLD cezasının ne hızla maksimuma yaklaşacağını belirler (0 → sabit ceza).
-      eps: 1e-08                    # Bölme işlemlerini stabilize eden küçük sayı.
+  reward:                           # Basit doğruluk odaklı ödül ayarları.
+    correct: 1.0                    # Tahmin doğruysa verilecek ödül.
+    incorrect: -1.0                 # Tahmin yanlışsa verilecek ceza.
+    tolerance: 0.0                  # Fiyat değişimi bu mutlak eşiğin altındaysa “yatay” sayılır (ödül 0).
 
   ppo:                              # PPO algoritmasının temel hiperparametreleri.
-    gamma: 0.4                      # İskonto oranı; düşük değer kısa vadeye odaklanır.
+    gamma: 0.98                      # İskonto oranı; düşük değer kısa vadeye odaklanır.
     lam: 0.98                       # GAE lambda; yüksek değer düşük bias fakat yüksek varyans üretir.
     learning_rate: 0.0004           # Optimizasyon öğrenme hızı.
     clip_epsilon: 0.5               # PPO clipping eşiği (oran [1-eps, 1+eps] dışına çıkarsa ceza uygulanır).
-    entropy_coeff: 0.9              # Keşfi teşvik eden başlangıç entropi katsayısı.
+    entropy_coeff: 0.8              # Keşfi teşvik eden başlangıç entropi katsayısı.
     entropy_min_coeff: 0.1          # Entropi katsayısının inebileceği alt sınır.
     entropy_decay_epochs: 0.8       # Entropi katsayısının lineer olarak düşeceği epoch yüzdesi.
     value_coeff: 0.5                # Value kaybının politika kaybına göre ağırlığı.
-    epochs: 3                      # Her rollout sonrasında yapılan optimizasyon epoch sayısı.
+    epochs: 10                      # Her rollout sonrasında yapılan optimizasyon epoch sayısı.
     minibatch_size: 64              # Rollout verisinden çekilen minibatch boyutu.
-    rollout_steps: 128             # Her güncellemeden önce toplanan deneyim uzunluğu.
+    rollout_steps: 256             # Her güncellemeden önce toplanan deneyim uzunluğu.
     max_grad_norm: 100              # Gradient clipping sınırı (daha küçük değerle patlamaları önle).
     # Deneme amaçlı alternatif ayarlar (gerekirse yorumdan çıkar):
     # gamma: 0.90
@@ -63,9 +55,9 @@ globals:                            # Profillerin devraldığı varsayılan ayar
     # max_grad_norm: 0.5
 
   training:                         # Eğitim döngüsü ve loglama tercihleri.
-    total_epochs: 100               # Maksimum PPO epoch sayısı.
+    total_epochs: 400               # Maksimum PPO epoch sayısı.
     validate_every: 100             # Kaç epochta bir doğrulama yapılacağı (0 → devre dışı).
-    best_metric: "net_profit"       # En iyi modelin seçilmesinde izlenecek metrik.
+    best_metric: "total_reward"       # En iyi modelin seçilmesinde izlenecek metrik.
     save_best_model: true           # En iyi kontrol noktasını diske kaydet.
     model_save_path: "outputs/models/best_model.pth"  # Profil klasörü oluşmadan önce kullanılan varsayılan dosya.
     log_path: "outputs/logs/train_logs.csv"           # Eğitim loglarının varsayılan yolu.
@@ -101,30 +93,35 @@ globals:                            # Profillerin devraldığı varsayılan ayar
         ppo.entropy_coeff: [0.2, 1.0]
         ppo.entropy_min_coeff: [0.05, 0.3]
         ppo.value_coeff: [0.1, 1.0]
-        reward.weights.profit: [0.2, 1.0]
-        reward.weights.drawdown: [0.2, 1.0]
-        reward.weights.hold: [5.0, 15.0]
       log_scaled:
         - ppo.learning_rate         # Öğrenme hızını logaritmik ölçekte örnekle.
 
 profiles:                           # Profiller yalnızca farklılaşan alanları yazar.
   aggressive:
     reward:
-      weights:
-        profit: 0.9                 # Kâr ağırlığını yüksek tut.
-        drawdown: 0.1               # Drawdown cezasını düşük tut.
-        hold: 1.6
+      correct: 1.5                 # Doğru tahminlerde yüksek puan, yanlıştaysa sert ceza.
+      incorrect: -1.5
+      tolerance: 0.0               # Mikro hareketleri bile değerlendirsin.
+    ppo:
+      entropy_coeff: 0.6           # Daha fazla keşif.
+      clip_epsilon: 0.4
+    training:
+      total_epochs: 350
 
   balanced:
     reward:
-      weights:
-        profit: 0.6                 # Dengeli kâr ağırlığı.
-        drawdown: 0.4               # Orta seviye drawdown cezası.
-        hold: 3.6                   # Pozisyonu fazla tutmaya orta seviyede ceza ver.
+      correct: 1.0
+      incorrect: -1.0
+      tolerance: 0.0005            # ±0.05% değişimleri “yatay” say.
+
 
   defensive:
     reward:
-      weights:
-        profit: 0.2                 # Temkinli kâr ağırlığı.
-        drawdown: 0.8               # Drawdown cezasını sert uygula.
-        hold: 1.6
+      correct: 0.8
+      incorrect: -0.8
+      tolerance: 0.0010            # Daha geniş tolerans → yalnızca belirgin hareketlerde puan.
+    ppo:
+      entropy_coeff: 0.25          # Daha deterministik politika.
+      clip_epsilon: 0.2
+    training:
+      total_epochs: 300

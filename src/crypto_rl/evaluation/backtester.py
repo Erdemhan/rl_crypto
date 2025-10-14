@@ -28,24 +28,20 @@ class Backtester:
         self.config = config
 
     def run(self, deterministic: bool = True) -> BacktestResult:
-        """Backtest dongusunu yurutur."""
+        """Run the backtest loop."""
         state = self.env.reset()
-        action_mask = self.env.valid_action_mask()
         done = False
 
         while not done:
-            action, _, _ = self.agent.select_action(
-                state, deterministic=deterministic, action_mask=action_mask
-            )
+            action, _, _ = self.agent.select_action(state, deterministic=deterministic)
             step = self.env.step(action)
             if step is None:
                 break
-            state, _, done, info = step
-            action_mask = info.get("action_mask", self.env.valid_action_mask())
+            state, _, done, _ = step
 
         result = BacktestResult(
-            equity_curve=list(self.env.equity_curve),
-            trades=list(getattr(self.env, "trade_log", [])),
+            equity_curve=list(getattr(self.env, "score_history", [])),
+            trades=list(getattr(self.env, "prediction_log", [])),
         )
         self._persist(result)
         return result

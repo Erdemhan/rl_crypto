@@ -102,23 +102,28 @@ class ValidationRunner:
             obs, _, done, _ = val_env.step(action)
 
         equity = np.asarray(val_env.equity_curve, dtype=np.float32)
-        net_profit = (equity[-1] - equity[0]) / (equity[0] + 1e-8)
-        returns = np.diff(equity) / (equity[:-1] + 1e-8)
-        sharpe = returns.mean() / (returns.std() + 1e-8) if len(returns) > 1 else 0.0
-        max_dd = val_env.max_drawdown(equity)
+        step_rewards = np.diff(equity)
+        total_reward = float(equity[-1]) if equity.size else 0.0
+        avg_reward = float(step_rewards.mean()) if step_rewards.size else 0.0
+        reward_std = float(step_rewards.std()) if step_rewards.size else 0.0
+        accuracy = (
+            val_env.correct_predictions / val_env.total_directional_predictions
+            if getattr(val_env, "total_directional_predictions", 0) > 0
+            else float("nan")
+        )
 
         log_path = Path(self.config.get("validation.log_path", "outputs/validation/validation_results.csv"))
         log_path.parent.mkdir(parents=True, exist_ok=True)
         with log_path.open("a", encoding="utf-8") as handle:
             handle.write(
-                f"{epoch},{net_profit:.4f},{sharpe:.4f},{max_dd:.4f},{equity[-1]:.2f}\n"
+                f"{epoch},{total_reward:.4f},{avg_reward:.4f},{reward_std:.4f},{accuracy:.4f}\n"
             )
 
         return {
-            "net_profit": float(net_profit),
-            "sharpe": float(sharpe),
-            "max_drawdown": float(max_dd),
-            "final_budget": float(equity[-1]),
+            "total_reward": total_reward,
+            "avg_reward": avg_reward,
+            "reward_std": reward_std,
+            "accuracy": accuracy,
             "log_path": str(log_path),
         }
 
@@ -184,12 +189,12 @@ class PPOTrainer:
                     metrics = self.validator.run(epoch)
                     if self.logger:
                         self.logger.info(
-                            "Dogrulama | epoch=%s net_profit=%.4f sharpe=%.4f max_dd=%.4f final=%.2f",
+                            "Validation | epoch=%s reward=%.4f avg=%.4f std=%.4f acc=%.2f%%",
                             epoch,
-                            metrics["net_profit"],
-                            metrics["sharpe"],
-                            metrics["max_drawdown"],
-                            metrics["final_budget"],
+                            float(metrics.get("total_reward", 0.0)),
+                            float(metrics.get("avg_reward", 0.0)),
+                            float(metrics.get("reward_std", 0.0)),
+                            float(metrics.get("accuracy", float("nan"))) * 100.0,
                         )
                     self._maybe_update_best(metrics, epoch)
 
@@ -282,16 +287,6 @@ class PPOTrainer:
             "epoch": self._best_metric_epoch,
         }
 
-    def _count_invalid_sells(self, rollout: Dict[str, List]) -> Dict[str, float]:
-        """Gecersiz SELL aksiyonlarini sayar."""
-        invalid = 0
-        for state, action in zip(rollout["states"], rollout["actions"]):
-            position = state[-1]
-            if action == 1 and position == 0:
-                invalid += 1
-        total = len(rollout["actions"])
-        return {"count": invalid, "ratio": invalid / total if total else 0.0}
-
     def _log_action_distribution(self, epoch: int, rollout: Dict[str, List]) -> Dict[str, int]:
         """Aksiyon dagilimini hesaplar."""
         dist = Counter(rollout["actions"])
@@ -310,31 +305,33 @@ class PPOTrainer:
         equity = self.env.equity_curve
         if len(equity) < 2:
             self.logger.warning(
-                "Epoch %s | actions=%s | Equity egrisi icin yeterli veri yok.",
+                "Epoch %s | actions=%s | score curve has insufficient data.",
                 epoch,
                 action_dist,
             )
             return
 
         eq = np.asarray(equity, dtype=np.float32)
-        returns = np.diff(eq) / (eq[:-1] + 1e-8)
-        net = (eq[-1] - eq[0]) / (eq[0] + 1e-8)
-        sharpe = returns.mean() / (returns.std() + 1e-8)
-        dd = self.env.max_drawdown(eq) if hasattr(self.env, "max_drawdown") else 0.0
+        rewards = np.diff(eq)
+        total_reward = float(eq[-1])
+        avg_reward = float(rewards.mean()) if rewards.size else 0.0
+        reward_std = float(rewards.std()) if rewards.size else 0.0
+        accuracy = (
+            self.env.correct_predictions / self.env.total_directional_predictions
+            if getattr(self.env, "total_directional_predictions", 0) > 0
+            else float("nan")
+        )
 
         self.logger.info(
-            "Epoch %s | actions=%s net_profit=%.4f sharpe=%.4f max_dd=%.4f final=%.2f",
+            "Epoch %s | actions=%s total_reward=%.4f avg=%.4f std=%.4f acc=%.2f",
             epoch,
             action_dist,
-            net,
-            sharpe,
-            dd,
-            eq[-1],
+            total_reward,
+            avg_reward,
+            reward_std,
+            accuracy * 100.0 if np.isfinite(accuracy) else float("nan"),
         )
 
     def _build_action_labels(self) -> Dict[int, str]:
-        """Aksiyon indekslerini okunabilir etiketlere cevirir."""
-        labels = {0: "HOLD", 1: "SELL"}
-        for idx, coin in enumerate(self.env.coin_list):
-            labels[idx + 2] = f"BUY {coin}"
-        return labels
+        """Map action indices to readable labels."""
+        return {0: "DOWN", 1: "UP"}

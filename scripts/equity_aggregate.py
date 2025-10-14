@@ -25,40 +25,25 @@ from data.data_loader import load_price_data  # noqa: E402
 from data.split_utils import select_range  # noqa: E402
 
 
-def safe_sharpe(returns: np.ndarray, eps: float = 1e-8) -> float:
-    r = np.asarray(returns, dtype=float)
-    mu = np.nanmean(r)
-    sd = np.nanstd(r)
-    if not np.isfinite(sd) or sd < eps:
-        return 0.0
-    s = mu / (sd + eps)
-    return float(s) if np.isfinite(s) else 0.0
+def summarize_predictions(df: pd.DataFrame) -> dict:
+    rewards = df.get("reward")
+    cumulative = df.get("portfolio_value")
+    correct = df.get("correct")
 
+    rewards_arr = rewards.astype(float).to_numpy() if rewards is not None else np.array([], dtype=float)
+    cumulative_arr = cumulative.astype(float).to_numpy() if cumulative is not None else np.array([0.0], dtype=float)
 
-def max_drawdown(equity: np.ndarray, eps: float = 1e-8) -> float:
-    eq = np.asarray(equity, dtype=float)
-    peak = np.maximum.accumulate(eq)
-    dd = (peak - eq) / (peak + eps)
-    mdd = float(np.nanmax(dd)) if dd.size else 0.0
-    return 100.0 * mdd
+    total_reward = float(cumulative_arr[-1]) if cumulative_arr.size else 0.0
+    avg_reward = float(np.mean(rewards_arr)) if rewards_arr.size else 0.0
+    reward_std = float(np.std(rewards_arr)) if rewards_arr.size else 0.0
+    accuracy = float(correct.astype(float).mean()) if correct is not None else float("nan")
 
-
-def analyze_equity(df: pd.DataFrame) -> dict:
-    equity = df["portfolio_value"].astype(float).to_numpy()
-    initial = float(equity[0])
-    final = float(equity[-1])
-    net_profit = final - initial
-    return_pct = (final / initial - 1.0) * 100.0
-    ret = np.diff(equity) / equity[:-1]
-    sharpe = safe_sharpe(ret)
-    mdd_pct = max_drawdown(equity)
     return {
-        "initial_value": initial,
-        "final_value": final,
-        "net_profit": net_profit,
-        "return_pct": return_pct,
-        "sharpe": sharpe,
-        "max_drawdown_pct": mdd_pct,
+        "total_reward": total_reward,
+        "avg_reward": avg_reward,
+        "reward_std": reward_std,
+        "accuracy": accuracy * 100.0 if np.isfinite(accuracy) else float("nan"),
+        "steps": int(len(df)),
     }
 
 
@@ -203,12 +188,14 @@ def main() -> None:
                 continue
 
             df["step"] = pd.to_numeric(df["step"], errors="coerce").fillna(0).astype(int)
-            df["portfolio_value"] = pd.to_numeric(df["portfolio_value"], errors="coerce")
-            for col in ["position", "cash_only", "invalid_sell", "redundant_buy", "hold_steps"]:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
+            df["portfolio_value"] = pd.to_numeric(df["portfolio_value"], errors="coerce").fillna(method="ffill").fillna(method="bfill")
+            df["portfolio_value"] = df["portfolio_value"].astype(float)
+            if "reward" in df.columns:
+                df["reward"] = pd.to_numeric(df["reward"], errors="coerce").fillna(0.0)
+            if "correct" in df.columns:
+                df["correct"] = pd.to_numeric(df["correct"], errors="coerce").fillna(0.0)
 
-            metrics = analyze_equity(df)
+            metrics = summarize_predictions(df)
             metrics.update(
                 {
                     "scenario": scenario,
@@ -218,25 +205,22 @@ def main() -> None:
             )
             summary_rows.append(metrics)
 
-            actions = {"buy": [], "sell": []}
-            if "action" in df.columns:
-                buys = df[df["action"].str.startswith("BUY", na=False)]
-                sells = df[df["action"] == "SELL"]
-                if "invalid_sell" in df.columns:
-                    sells = sells[sells["invalid_sell"] == 0]
-                if not buys.empty:
-                    actions["buy"] = buys["step"].astype(int).tolist()
-                if not sells.empty:
-                    actions["sell"] = sells["step"].astype(int).tolist()
+        correct_steps: List[int] = []
+        incorrect_steps: List[int] = []
+        if "correct" in df.columns:
+            correct_mask = df["correct"].astype(float).fillna(0.0)
+            correct_steps = df[correct_mask >= 0.5]["step"].astype(int).tolist()
+            incorrect_steps = df[correct_mask < 0.5]["step"].astype(int).tolist()
 
-            scenario_profiles_data.append(
-                {
-                    "profile": profile,
-                    "equity": df["portfolio_value"].to_numpy(dtype=float),
-                    "steps": df["step"].to_numpy(dtype=int),
-                    "actions": actions,
-                }
-            )
+        scenario_profiles_data.append(
+            {
+                "profile": profile,
+                "equity": df["portfolio_value"].to_numpy(dtype=float),
+                "steps": df["step"].to_numpy(dtype=int),
+                "correct_steps": correct_steps,
+                "incorrect_steps": incorrect_steps,
+            }
+        )
 
         if scenario_profiles_data:
             scenario_profiles[scenario] = scenario_profiles_data
@@ -291,12 +275,11 @@ def main() -> None:
             legend_handles += price_line
             legend_labels += [price_label or "Price"]
 
-        actions = profile_info["actions"]
-        buy_steps = actions["buy"]
-        sell_steps = actions["sell"]
+        correct_steps = profile_info["correct_steps"]
+        incorrect_steps = profile_info["incorrect_steps"]
 
-        if buy_steps:
-            clipped = [s for s in buy_steps if 0 <= s < len(equity)]
+        if correct_steps:
+            clipped = [s for s in correct_steps if 0 <= s < len(equity)]
             if clipped:
                 if price_axis is not None and price_series is not None:
                     buy_handle = price_axis.scatter(
@@ -306,7 +289,7 @@ def main() -> None:
                         s=36,
                         color="green",
                         alpha=0.75,
-                        label="BUY actions",
+                        label="Correct",
                     )
                 else:
                     buy_handle = ax.scatter(
@@ -316,12 +299,12 @@ def main() -> None:
                         s=36,
                         color="green",
                         alpha=0.75,
-                        label="BUY actions",
+                        label="Correct",
                     )
                 legend_handles.append(buy_handle)
-                legend_labels.append("BUY actions")
-        if sell_steps:
-            clipped = [s for s in sell_steps if 0 <= s < len(equity)]
+                legend_labels.append("Correct")
+        if incorrect_steps:
+            clipped = [s for s in incorrect_steps if 0 <= s < len(equity)]
             if clipped:
                 if price_axis is not None and price_series is not None:
                     sell_handle = price_axis.scatter(
@@ -331,7 +314,7 @@ def main() -> None:
                         s=36,
                         color="red",
                         alpha=0.75,
-                        label="SELL actions",
+                        label="Incorrect",
                     )
                 else:
                     sell_handle = ax.scatter(
@@ -341,10 +324,10 @@ def main() -> None:
                         s=36,
                         color="red",
                         alpha=0.75,
-                        label="SELL actions",
+                        label="Incorrect",
                     )
                 legend_handles.append(sell_handle)
-                legend_labels.append("SELL actions")
+                legend_labels.append("Incorrect")
 
         ax.legend(legend_handles, legend_labels)
 
@@ -360,9 +343,8 @@ def main() -> None:
         for row in rows:
             print(
                 f"{row['profile']:>10} | "
-                f"Init: {row['initial_value']:.2f}  Final: {row['final_value']:.2f}  "
-                f"Net: {row['net_profit']:.2f}  Ret%: {row['return_pct']:.2f}  "
-                f"Sharpe: {row['sharpe']:.4f}  MDD%: {row['max_drawdown_pct']:.2f}"
+                f"Reward: {row['total_reward']:.2f}  Avg: {row['avg_reward']:.4f}  "
+                f"Std: {row['reward_std']:.4f}  Acc%: {row['accuracy']:.2f}  Steps: {row['steps']}"
             )
 
     if args.save:
@@ -378,12 +360,11 @@ def main() -> None:
                 fieldnames=[
                     "scenario",
                     "profile",
-                    "initial_value",
-                    "final_value",
-                    "net_profit",
-                    "return_pct",
-                    "sharpe",
-                    "max_drawdown_pct",
+                    "total_reward",
+                    "avg_reward",
+                    "reward_std",
+                    "accuracy",
+                    "steps",
                     "trades_path",
                 ],
             )

@@ -35,6 +35,13 @@ def parse_args():
         default=0,
         help="Paralel calistirilacak islem sayisi (0 => otomatik).",
     )
+    parser.add_argument(
+        "--profiles",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Sadece belirtilen profilleri backtest et (örn. balanced aggressive).",
+    )
     return parser.parse_args()
 
 
@@ -51,7 +58,7 @@ def main():
         config_path=args.config,
         run_id=args.run_id,
         deterministic=_to_bool(args.deterministic),
-        profiles=None,
+        profiles=args.profiles,
         processes=args.procs,
     )
 
